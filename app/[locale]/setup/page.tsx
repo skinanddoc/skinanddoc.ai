@@ -34,9 +34,7 @@ export default function SetupPage() {
   } = useContext(ChatbotUIContext)
 
   const router = useRouter()
-
   const [loading, setLoading] = useState(true)
-
   const [currentStep, setCurrentStep] = useState(1)
 
   // Profile Step
@@ -64,37 +62,32 @@ export default function SetupPage() {
   useEffect(() => {
     ;(async () => {
       const session = (await supabase.auth.getSession()).data.session
+      if (!session) return router.push("/login")
 
-      if (!session) {
-        return router.push("/login")
+      const user = session.user
+      const profile = await getProfileByUserId(user.id)
+      if (!profile) return
+
+      setProfile(profile)
+      setUsername(profile.username)
+
+      if (!profile.has_onboarded) {
+        setLoading(false)
       } else {
-        const user = session.user
+        const data = await fetchHostedModels(profile)
+        if (!data) return
 
-        const profile = await getProfileByUserId(user.id)
-        setProfile(profile)
-        setUsername(profile.username)
+        setEnvKeyMap(data.envKeyMap)
+        setAvailableHostedModels(data.hostedModels)
 
-        if (!profile.has_onboarded) {
-          setLoading(false)
-        } else {
-          const data = await fetchHostedModels(profile)
-
-          if (!data) return
-
-          setEnvKeyMap(data.envKeyMap)
-          setAvailableHostedModels(data.hostedModels)
-
-          if (profile["openrouter_api_key"] || data.envKeyMap["openrouter"]) {
-            const openRouterModels = await fetchOpenRouterModels()
-            if (!openRouterModels) return
-            setAvailableOpenRouterModels(openRouterModels)
-          }
-
-          const homeWorkspaceId = await getHomeWorkspaceByUserId(
-            session.user.id
-          )
-          return router.push(`/${homeWorkspaceId}/chat`)
+        if (profile["openrouter_api_key"] || data.envKeyMap["openrouter"]) {
+          const openRouterModels = await fetchOpenRouterModels()
+          if (!openRouterModels) return
+          setAvailableOpenRouterModels(openRouterModels)
         }
+
+        const homeWorkspaceId = await getHomeWorkspaceByUserId(user.id)
+        return router.push(`/${homeWorkspaceId}/chat`)
       }
     })()
   }, [])
@@ -113,12 +106,11 @@ export default function SetupPage() {
 
   const handleSaveSetupSetting = async () => {
     const session = (await supabase.auth.getSession()).data.session
-    if (!session) {
-      return router.push("/login")
-    }
+    if (!session) return router.push("/login")
 
     const user = session.user
     const profile = await getProfileByUserId(user.id)
+    if (!profile) return
 
     const updateProfilePayload: TablesUpdate<"profiles"> = {
       ...profile,
@@ -146,18 +138,26 @@ export default function SetupPage() {
     setProfile(updatedProfile)
 
     const workspaces = await getWorkspacesByUserId(profile.user_id)
-    const homeWorkspace = workspaces.find(w => w.is_home)
 
-    // There will always be a home workspace
-    setSelectedWorkspace(homeWorkspace!)
+    if (!workspaces || workspaces.length === 0) {
+      console.error("No workspaces found for user:", profile.user_id)
+      return
+    }
+
+    const homeWorkspace = workspaces.find(w => w.is_home)
+    if (!homeWorkspace) {
+      console.error("Home workspace not found.")
+      return
+    }
+
+    setSelectedWorkspace(homeWorkspace)
     setWorkspaces(workspaces)
 
-    return router.push(`/${homeWorkspace?.id}/chat`)
+    return router.push(`/${homeWorkspace.id}/chat`)
   }
 
   const renderStep = (stepNum: number) => {
     switch (stepNum) {
-      // Profile Step
       case 1:
         return (
           <StepContainer
@@ -178,8 +178,6 @@ export default function SetupPage() {
             />
           </StepContainer>
         )
-
-      // API Step
       case 2:
         return (
           <StepContainer
@@ -224,8 +222,6 @@ export default function SetupPage() {
             />
           </StepContainer>
         )
-
-      // Finish Step
       case 3:
         return (
           <StepContainer
@@ -244,9 +240,7 @@ export default function SetupPage() {
     }
   }
 
-  if (loading) {
-    return null
-  }
+  if (loading) return null
 
   return (
     <div className="flex h-full items-center justify-center">
