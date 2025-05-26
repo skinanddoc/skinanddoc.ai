@@ -1,26 +1,26 @@
-"use client"
+'use client'
 
-import { ChatbotUIContext } from "@/context/context"
-import { getProfileByUserId, updateProfile } from "@/db/profile"
+import { ChatbotUIContext } from '@/context/context'
+import { getProfileByUserId, updateProfile } from '@/db/profile'
 import {
   getHomeWorkspaceByUserId,
   getWorkspacesByUserId
-} from "@/db/workspaces"
+} from '@/db/workspaces'
 import {
   fetchHostedModels,
   fetchOpenRouterModels
-} from "@/lib/models/fetch-models"
-import { supabase } from "@/lib/supabase/browser-client"
-import { TablesUpdate } from "@/supabase/types"
-import { useRouter } from "next/navigation"
-import { useContext, useEffect, useState } from "react"
-import { APIStep } from "../../../components/setup/api-step"
-import { FinishStep } from "../../../components/setup/finish-step"
-import { ProfileStep } from "../../../components/setup/profile-step"
+} from '@/lib/models/fetch-models'
+import { supabase } from '@/lib/supabase/browser-client'
+import { TablesUpdate } from '@/supabase/types'
+import { useRouter } from 'next/navigation'
+import { useContext, useEffect, useState } from 'react'
+import { APIStep } from '../../../components/setup/api-step'
+import { FinishStep } from '../../../components/setup/finish-step'
+import { ProfileStep } from '../../../components/setup/profile-step'
 import {
   SETUP_STEP_COUNT,
   StepContainer
-} from "../../../components/setup/step-container"
+} from '../../../components/setup/step-container'
 
 export default function SetupPage() {
   const {
@@ -34,56 +34,65 @@ export default function SetupPage() {
   } = useContext(ChatbotUIContext)
 
   const router = useRouter()
+
   const [loading, setLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
 
   // Profile Step
-  const [displayName, setDisplayName] = useState("")
-  const [username, setUsername] = useState(profile?.username || "")
+  const [displayName, setDisplayName] = useState('')
+  const [username, setUsername] = useState('')
   const [usernameAvailable, setUsernameAvailable] = useState(true)
 
   // API Step
   const [useAzureOpenai, setUseAzureOpenai] = useState(false)
-  const [openaiAPIKey, setOpenaiAPIKey] = useState("")
-  const [openaiOrgID, setOpenaiOrgID] = useState("")
-  const [azureOpenaiAPIKey, setAzureOpenaiAPIKey] = useState("")
-  const [azureOpenaiEndpoint, setAzureOpenaiEndpoint] = useState("")
-  const [azureOpenai35TurboID, setAzureOpenai35TurboID] = useState("")
-  const [azureOpenai45TurboID, setAzureOpenai45TurboID] = useState("")
-  const [azureOpenai45VisionID, setAzureOpenai45VisionID] = useState("")
-  const [azureOpenaiEmbeddingsID, setAzureOpenaiEmbeddingsID] = useState("")
-  const [anthropicAPIKey, setAnthropicAPIKey] = useState("")
-  const [googleGeminiAPIKey, setGoogleGeminiAPIKey] = useState("")
-  const [mistralAPIKey, setMistralAPIKey] = useState("")
-  const [groqAPIKey, setGroqAPIKey] = useState("")
-  const [perplexityAPIKey, setPerplexityAPIKey] = useState("")
-  const [openrouterAPIKey, setOpenrouterAPIKey] = useState("")
+  const [openaiAPIKey, setOpenaiAPIKey] = useState('')
+  const [openaiOrgID, setOpenaiOrgID] = useState('')
+  const [azureOpenaiAPIKey, setAzureOpenaiAPIKey] = useState('')
+  const [azureOpenaiEndpoint, setAzureOpenaiEndpoint] = useState('')
+  const [azureOpenai35TurboID, setAzureOpenai35TurboID] = useState('')
+  const [azureOpenai45TurboID, setAzureOpenai45TurboID] = useState('')
+  const [azureOpenai45VisionID, setAzureOpenai45VisionID] = useState('')
+  const [azureOpenaiEmbeddingsID, setAzureOpenaiEmbeddingsID] = useState('')
+  const [anthropicAPIKey, setAnthropicAPIKey] = useState('')
+  const [googleGeminiAPIKey, setGoogleGeminiAPIKey] = useState('')
+  const [mistralAPIKey, setMistralAPIKey] = useState('')
+  const [groqAPIKey, setGroqAPIKey] = useState('')
+  const [perplexityAPIKey, setPerplexityAPIKey] = useState('')
+  const [openrouterAPIKey, setOpenrouterAPIKey] = useState('')
 
   useEffect(() => {
     ;(async () => {
       const session = (await supabase.auth.getSession()).data.session
-      if (!session) return router.push("/login")
+      if (!session) {
+        return router.push('/login')
+      }
 
       const user = session.user
       const profile = await getProfileByUserId(user.id)
-      if (!profile) return
+
+      if (!profile) {
+        console.error('Profile not found')
+        return router.push('/login')
+      }
 
       setProfile(profile)
-      setUsername(profile.username)
+      setUsername(profile.username || '')
 
       if (!profile.has_onboarded) {
         setLoading(false)
       } else {
         const data = await fetchHostedModels(profile)
+
         if (!data) return
 
         setEnvKeyMap(data.envKeyMap)
         setAvailableHostedModels(data.hostedModels)
 
-        if (profile["openrouter_api_key"] || data.envKeyMap["openrouter"]) {
+        if (profile.openrouter_api_key || data.envKeyMap['openrouter']) {
           const openRouterModels = await fetchOpenRouterModels()
-          if (!openRouterModels) return
-          setAvailableOpenRouterModels(openRouterModels)
+          if (openRouterModels) {
+            setAvailableOpenRouterModels(openRouterModels)
+          }
         }
 
         const homeWorkspaceId = await getHomeWorkspaceByUserId(user.id)
@@ -106,13 +115,19 @@ export default function SetupPage() {
 
   const handleSaveSetupSetting = async () => {
     const session = (await supabase.auth.getSession()).data.session
-    if (!session) return router.push("/login")
+    if (!session) {
+      return router.push('/login')
+    }
 
     const user = session.user
     const profile = await getProfileByUserId(user.id)
-    if (!profile) return
 
-    const updateProfilePayload: TablesUpdate<"profiles"> = {
+    if (!profile) {
+      console.error('Profile not found')
+      return router.push('/login')
+    }
+
+    const updateProfilePayload: TablesUpdate<'profiles'> = {
       ...profile,
       has_onboarded: true,
       display_name: displayName,
@@ -138,22 +153,12 @@ export default function SetupPage() {
     setProfile(updatedProfile)
 
     const workspaces = await getWorkspacesByUserId(profile.user_id)
-
-    if (!workspaces || workspaces.length === 0) {
-      console.error("No workspaces found for user:", profile.user_id)
-      return
-    }
-
     const homeWorkspace = workspaces.find(w => w.is_home)
-    if (!homeWorkspace) {
-      console.error("Home workspace not found.")
-      return
-    }
 
-    setSelectedWorkspace(homeWorkspace)
+    setSelectedWorkspace(homeWorkspace!)
     setWorkspaces(workspaces)
 
-    return router.push(`/${homeWorkspace.id}/chat`)
+    return router.push(`/${homeWorkspace?.id}/chat`)
   }
 
   const renderStep = (stepNum: number) => {
@@ -178,6 +183,7 @@ export default function SetupPage() {
             />
           </StepContainer>
         )
+
       case 2:
         return (
           <StepContainer
@@ -222,6 +228,7 @@ export default function SetupPage() {
             />
           </StepContainer>
         )
+
       case 3:
         return (
           <StepContainer
@@ -235,12 +242,15 @@ export default function SetupPage() {
             <FinishStep displayName={displayName} />
           </StepContainer>
         )
+
       default:
         return null
     }
   }
 
-  if (loading) return null
+  if (loading) {
+    return null
+  }
 
   return (
     <div className="flex h-full items-center justify-center">
